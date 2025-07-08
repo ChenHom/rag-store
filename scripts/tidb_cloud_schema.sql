@@ -1,0 +1,15 @@
+-- 雲端向量表
+CREATE DATABASE IF NOT EXISTS rag;
+
+USE rag;
+
+CREATE TABLE IF NOT EXISTS embeddings(
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  doc_id VARCHAR(128),
+  chunk  TEXT,
+  vec    VECTOR(1536)
+);
+
+ALTER TABLE embeddings
+ADD VECTOR INDEX vec_hnsw (vec)
+USING HNSW;
