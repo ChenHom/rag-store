@@ -1,19 +1,40 @@
 # 進度總結
 
 ## 已完成的工作：
-*   調查了前端的上傳 API 路由和後端的 FastAPI 應用程式，以了解 PDF 上傳流程。
-*   安裝了缺少的 Python 套件管理器 Poetry。
-*   將 `pyproject.toml` 中的 `langchain` 依賴項更新到較新的版本 (`^0.2.0`)。
-*   將 `.env` 檔案中的 `LOCAL_TIDB_HOST` 更正為 `127.0.0.1`。
-*   更新了 `rag_store/app/main.py` 中 `TiDBVectorStore` 的導入語句，使其從 `langchain_community.vectorstores` 導入。
-*   在 `pyproject.toml` 中添加了 `langchain-community` 作為依賴項，並修復了修改時引入的語法錯誤。
-*   從 `rag_store/app/main.py` 中移除了調試用的 print 語句。
+*   ✅ 調查了前端的上傳 API 路由和後端的 FastAPI 應用程式，以了解 PDF 上傳流程。
+*   ✅ 安裝了缺少的 Python 套件管理器 Poetry。
+*   ✅ 將 `pyproject.toml` 中的 `langchain` 依賴項更新到較新的版本 (`^0.2.0`)。
+*   ✅ 將 `.env` 檔案中的 `LOCAL_TIDB_HOST` 更正為 `127.0.0.1`。
+*   ✅ 更新了 `rag_store/app/main.py` 中 `TiDBVectorStore` 的導入語句，使其從 `langchain_community.vectorstores` 導入。
+*   ✅ 在 `pyproject.toml` 中添加了 `langchain-community` 作為依賴項，並修復了修改時引入的語法錯誤。
+*   ✅ 從 `rag_store/app/main.py` 中移除了調試用的 print 語句。
+*   ✅ **重新實作完整的 FastAPI 後端 API 端點**：
+    - `/upload` - 文件上傳端點（支援 PDF, TXT, DOCX, PNG, JPG, JPEG）
+    - `/query` - RAG 查詢端點（目前為佔位符實作）
+    - `/files` - 列出已上傳文件
+    - `/health` - 健康檢查端點
+    - 完整的錯誤處理和 CORS 支援
+*   ✅ **修復前端 TypeScript 錯誤**：
+    - 修正 `any[]` 型別為具體的 `Source[]` 型別
+    - 修復 API 端點路徑問題
+*   ✅ **成功測試前後端整合**：
+    - 前端 Next.js 運行在 port 3002
+    - 後端 FastAPI 運行在 port 8000
+    - 前端 API 路由正確轉發到後端
+    - 文件上傳功能正常工作
+    - 聊天查詢功能正常響應
 
-## 遇到的問題：
-*   **PDF 上傳錯誤：** 主要問題是前端在嘗試上傳 PDF 時，從後端接收到的是 HTML 錯誤頁面（而不是 JSON），導致 `SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON` 錯誤。這表示後端伺服器沒有按預期響應。
-*   **後端伺服器啟動失敗：** FastAPI 後端伺服器多次未能啟動或保持在 8000 端口運行。
-    *   最初的失敗是因為找不到 `poetry`。
-    *   隨後的失敗是由於 `TiDBVectorStore` 的 `ImportError`（因為 `langchain` 過時且缺少 `langchain-community`）。
-    *   儘管在 `.env` 中將 `LOCAL_TIDB_HOST` 更改為 "127.0.0.1"，但伺服器日誌中仍然顯示 "tidb"，這表明環境變量加載或緩存存在問題。
-    *   `pyproject.toml` 中的 TOML 語法錯誤曾暫時阻止了依賴項的更新。
-*   伺服器目前仍未運行，`lsof -i :8000` 顯示沒有進程，並且用戶取消了上次在前台運行伺服器的嘗試。
+## 已解決的問題：
+*   **PDF 上傳錯誤：** ✅ 已修復 - 後端 API 端點現在正確實作並響應 JSON
+*   **後端伺服器啟動失敗：** ✅ 已修復 - 伺服器現在正常運行在 port 8000
+*   **前端建置錯誤：** ✅ 已修復 - TypeScript 錯誤已解決，建置成功
+*   **API 端點路徑錯誤：** ✅ 已修復 - 前端 API 路由正確指向後端端點
+
+## 當前狀態：
+*   ✅ 後端 FastAPI 服務正常運行 (port 8000)
+*   ✅ 前端 Next.js 服務正常運行 (port 3002)
+*   ✅ 前後端通信正常
+*   ✅ 文件上傳功能可用
+*   ✅ 基本查詢功能可用（佔位符回應）
+*   ⚠️ 尚需實作：RAG 管道（向量檢索、LLM 生成）
+*   ⚠️ 尚需實作：實際的 OpenAI API 整合

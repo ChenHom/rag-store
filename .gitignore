@@ -22,3 +22,5 @@ poetry.lock
 
 .env
 .env.local
+
+**/*.log

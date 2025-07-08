@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const backendFormData = new FormData();
     backendFormData.append('file', file);
 
-    const fastapiResponse = await fetch(FASTAPI_URL, {
+    const fastapiResponse = await fetch(`${FASTAPI_URL}/upload`, {
       method: 'POST',
       body: backendFormData,
       // Let the browser set the Content-Type header with the correct boundary

@@ -82,12 +82,19 @@ def serve(
     # 注意：這裡我們需要一種方式來引用 FastAPI app 物件。
     # 為了保持 CLI 和 Server 的分離，我們動態導入它。
     from .app.main import app
-    uvicorn.run(
-        app,
-        host=host,
-        port=port,
-        reload=reload,
-    )
+    if reload:
+        uvicorn.run(
+            "rag_store.app.main:app",
+            host=host,
+            port=port,
+            reload=reload,
+        )
+    else:
+        uvicorn.run(
+            app,
+            host=host,
+            port=port,
+        )
 
 def main():
     # 為了讓 `python -m rag_store` 能運作，我們需要一個進入點。

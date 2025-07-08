@@ -2,10 +2,15 @@
 
 import { useState, FormEvent } from 'react';
 
+type Source = {
+  page_content: string;
+  metadata: Record<string, unknown>;
+};
+
 type Message = {
   text: string;
   sender: 'user' | 'bot';
-  sources?: any[];
+  sources?: Source[];
 };
 
 export default function ChatPage() {
@@ -23,11 +28,7 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL_CLIENT || '';
-
-// ...
-
-      const response = await fetch(`${API_BASE_URL}/api/chat`, { // We'll create this API route next
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: input }),

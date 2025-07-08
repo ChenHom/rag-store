@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    const fastapiResponse = await fetch(FASTAPI_URL, {
+    const fastapiResponse = await fetch(`${FASTAPI_URL}/query`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
