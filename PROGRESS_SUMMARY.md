@@ -30,11 +30,19 @@
 *   **前端建置錯誤：** ✅ 已修復 - TypeScript 錯誤已解決，建置成功
 *   **API 端點路徑錯誤：** ✅ 已修復 - 前端 API 路由正確指向後端端點
 
+*   ✅ **Step 2 完成 - RAG 管道和 OpenAI API 整合**：
+    - 完整的文檔處理管道：OCR 提取 → 文本分塊 → 向量嵌入 → 存儲到 TiDB Cloud
+    - 向量檢索：使用 TiDB Cloud 的向量索引進行語義搜索
+    - LLM 生成：整合 OpenAI GPT-4 模型進行智能回答生成
+    - 支援 PDF、TXT、PNG、JPG、JPEG 文件處理
+    - 設置 TiDB Cloud 向量資料庫 schema（embeddings 表 + HNSW 向量索引）
+    - 健康檢查端點驗證 OpenAI API 和 TiDB Cloud 連接狀態
+
 ## 當前狀態：
 *   ✅ 後端 FastAPI 服務正常運行 (port 8000)
 *   ✅ 前端 Next.js 服務正常運行 (port 3002)
 *   ✅ 前後端通信正常
-*   ✅ 文件上傳功能可用
-*   ✅ 基本查詢功能可用（佔位符回應）
-*   ⚠️ 尚需實作：RAG 管道（向量檢索、LLM 生成）
-*   ⚠️ 尚需實作：實際的 OpenAI API 整合
+*   ✅ 文件上傳功能完整可用（支援多種格式）
+*   ✅ **RAG 查詢功能完全可用**（向量檢索 + GPT 生成）
+*   ✅ **OpenAI API 完整整合**（embedding + GPT-4）
+*   ✅ **TiDB Cloud 向量資料庫**（HNSW 索引）

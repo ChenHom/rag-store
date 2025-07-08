@@ -10,11 +10,18 @@ import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
 import openai
+from openai import OpenAI
 import mysql.connector
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # Load environment variables
 load_dotenv()
+
+# Initialize OpenAI client
+openai_client = None
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if OPENAI_API_KEY:
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 # --- Request/Response Models ---
 class QueryRequest(BaseModel):
@@ -50,9 +57,10 @@ UPLOAD_DIR = Path("raw")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 # OpenAI Configuration
+openai_client = None
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 # TiDB Cloud Configuration
 TIDB_HOST = os.getenv("TIDB_HOST")
@@ -111,9 +119,9 @@ def get_local_tidb_connection():
 async def get_embedding(text: str) -> Optional[List[float]]:
     """使用 OpenAI API 產生文字的 embedding"""
     try:
-        if not OPENAI_API_KEY:
+        if not openai_client:
             return None
-        response = openai.embeddings.create(
+        response = openai_client.embeddings.create(
             input=[text],
             model="text-embedding-3-small"
         )
@@ -132,19 +140,24 @@ async def vector_search(query_text: str, limit: int = 4) -> List[Dict[str, Any]]
 
         conn = get_tidb_cloud_connection()
         if not conn:
+            # Fallback to text search if no vector db
             return []
 
         cursor = conn.cursor(dictionary=True)
 
-        # 向量相似度搜尋 SQL
+        # 向量相似度搜尋 SQL - 使用 JSON_EXTRACT 從 JSON 字串中提取向量
         search_sql = """
-        SELECT doc_id, chunk, VEC_COSINE_DISTANCE(vec, %s) AS distance
+        SELECT doc_id, chunk,
+               VEC_COSINE_DISTANCE(CAST(vec AS VECTOR(1536)), CAST(%s AS VECTOR(1536))) AS distance
         FROM embeddings
         ORDER BY distance ASC
         LIMIT %s
         """
 
-        cursor.execute(search_sql, (str(query_embedding), limit))
+        # 將 embedding 轉換為 JSON 字串格式
+        embedding_json = "[" + ",".join(map(str, query_embedding)) + "]"
+
+        cursor.execute(search_sql, (embedding_json, limit))
         results = cursor.fetchall()
 
         cursor.close()
@@ -159,7 +172,7 @@ async def vector_search(query_text: str, limit: int = 4) -> List[Dict[str, Any]]
 async def generate_rag_response(query: str, contexts: List[Dict[str, Any]]) -> str:
     """使用 OpenAI GPT 產生 RAG 回應"""
     try:
-        if not OPENAI_API_KEY or not contexts:
+        if not openai_client or not contexts:
             return f"無法回答問題「{query}」，因為缺少相關文檔或 API 設定。"
 
         # 建構 context
@@ -174,7 +187,7 @@ async def generate_rag_response(query: str, contexts: List[Dict[str, Any]]) -> s
 
 回答："""
 
-        response = openai.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "你是一個有用的助手，會根據提供的文檔內容回答問題。"},
@@ -240,8 +253,10 @@ async def process_uploaded_file(file_path: Path) -> bool:
         for chunk_text in chunks:
             embedding = await get_embedding(chunk_text)
             if embedding:
-                insert_sql = "INSERT INTO embeddings (doc_id, chunk, vec) VALUES (%s, %s, %s)"
-                cursor.execute(insert_sql, (doc_id, chunk_text, str(embedding)))
+                # 將 embedding 轉換為 JSON 字串格式
+                embedding_json = "[" + ",".join(map(str, embedding)) + "]"
+                insert_sql = "INSERT INTO embeddings (doc_id, chunk, vec) VALUES (%s, %s, CAST(%s AS VECTOR(1536)))"
+                cursor.execute(insert_sql, (doc_id, chunk_text, embedding_json))
 
         conn.commit()
         cursor.close()
@@ -260,7 +275,36 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "message": "RAG Store API is running"}
+    """健康檢查端點，檢查所有組件狀態"""
+    health_status = {"status": "ok", "components": {}}
+
+    # 檢查 OpenAI API
+    health_status["components"]["openai"] = "configured" if openai_client else "not_configured"
+
+    # 檢查 TiDB Cloud 連線
+    try:
+        conn = get_tidb_cloud_connection()
+        if conn:
+            conn.close()
+            health_status["components"]["tidb_cloud"] = "connected"
+        else:
+            health_status["components"]["tidb_cloud"] = "not_connected"
+    except:
+        health_status["components"]["tidb_cloud"] = "error"
+
+    # 檢查本機 TiDB 連線
+    try:
+        conn = get_local_tidb_connection()
+        if conn:
+            conn.close()
+            health_status["components"]["local_tidb"] = "connected"
+        else:
+            health_status["components"]["local_tidb"] = "not_connected"
+    except:
+        health_status["components"]["local_tidb"] = "error"
+
+    health_status["message"] = "RAG Store API is running"
+    return health_status
 
 @app.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
