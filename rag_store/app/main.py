@@ -44,9 +44,32 @@ app = FastAPI(
 )
 
 # --- CORS Middleware ---
+# 取得外部 IP 設定
+EXTERNAL_IP = os.getenv("EXTERNAL_IP")
+EXTERNAL_FRONTEND_PORT = os.getenv("EXTERNAL_FRONTEND_PORT", "8001")
+
+# 允許的來源包含本機、外部 IP 和 ngrok
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
+    # ngrok 支援 - 允許所有 ngrok 子域名
+    "https://*.ngrok-free.app",
+    "https://6f78fcf20cfe.ngrok-free.app",
+]
+
+# 如果設定了外部 IP，則添加到允許的來源
+if EXTERNAL_IP:
+    allowed_origins.extend([
+        f"http://{EXTERNAL_IP}:{EXTERNAL_FRONTEND_PORT}",
+        f"http://{EXTERNAL_IP}:8000",
+        f"http://{EXTERNAL_IP}:8001",
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

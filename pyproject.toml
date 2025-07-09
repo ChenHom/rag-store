@@ -1,3 +1,9 @@
+[project]
+name = "rag-store"
+version = "0.1.0"
+description = "RAG Store backend"
+requires-python = ">=3.10"
+
 [tool.poetry]
 name = "rag-store"
 version = "0.1.0"

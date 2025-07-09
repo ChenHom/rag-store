@@ -1,10 +1,7 @@
-# Binaries and archives
-ngrok
-ngrok.tgz
-ngrok.yml
-
-# Log files
-fastapi_startup.log
+# Environment files (may contain sensitive IPs and keys)
+.env
+.env.*
+!.env.example
 
 # Frontend specific ignores
 frontend/.env.local
@@ -20,7 +17,18 @@ raw/
 # Poetry lock file (usually committed, but ignoring for now as per request)
 poetry.lock
 
-.env
-.env.local
-
+# Log files
 **/*.log
+fastapi_startup.log
+server.log
+
+# Process ID files
+.backend.pid
+.frontend.pid
+
+# Binaries and archives
+ngrok
+ngrok.tgz
+
+# ngrok configuration (may contain auth tokens)
+ngrok.yml
