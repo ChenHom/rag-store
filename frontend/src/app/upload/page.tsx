@@ -41,11 +41,7 @@ export default function UploadPage() {
     formData.append('file', file);
 
     try {
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL_CLIENT || '';
-
-// ...
-
-      const response = await fetch(`${API_BASE_URL}/api/upload`, { // We'll create this API route next
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });

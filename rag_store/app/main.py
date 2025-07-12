@@ -44,28 +44,15 @@ app = FastAPI(
 )
 
 # --- CORS Middleware ---
-# 取得外部 IP 設定
-EXTERNAL_IP = os.getenv("EXTERNAL_IP")
-EXTERNAL_FRONTEND_PORT = os.getenv("EXTERNAL_FRONTEND_PORT", "8001")
-
-# 允許的來源包含本機、外部 IP 和 ngrok
+# 內網環境配置
 allowed_origins = [
+    "http://localhost",
     "http://localhost:3000",
+    "http://localhost:80",
+    "http://127.0.0.1",
     "http://127.0.0.1:3000",
-    "http://localhost:3002",
-    "http://127.0.0.1:3002",
-    # ngrok 支援 - 允許所有 ngrok 子域名
-    "https://*.ngrok-free.app",
-    "https://6f78fcf20cfe.ngrok-free.app",
+    "http://127.0.0.1:80",
 ]
-
-# 如果設定了外部 IP，則添加到允許的來源
-if EXTERNAL_IP:
-    allowed_origins.extend([
-        f"http://{EXTERNAL_IP}:{EXTERNAL_FRONTEND_PORT}",
-        f"http://{EXTERNAL_IP}:8000",
-        f"http://{EXTERNAL_IP}:8001",
-    ])
 
 app.add_middleware(
     CORSMiddleware,
@@ -297,37 +284,9 @@ def read_root():
     return {"message": "Welcome to RAG Store API", "version": "0.1.0"}
 
 @app.get("/health")
-def health_check():
-    """健康檢查端點，檢查所有組件狀態"""
-    health_status = {"status": "ok", "components": {}}
-
-    # 檢查 OpenAI API
-    health_status["components"]["openai"] = "configured" if openai_client else "not_configured"
-
-    # 檢查 TiDB Cloud 連線
-    try:
-        conn = get_tidb_cloud_connection()
-        if conn:
-            conn.close()
-            health_status["components"]["tidb_cloud"] = "connected"
-        else:
-            health_status["components"]["tidb_cloud"] = "not_connected"
-    except:
-        health_status["components"]["tidb_cloud"] = "error"
-
-    # 檢查本機 TiDB 連線
-    try:
-        conn = get_local_tidb_connection()
-        if conn:
-            conn.close()
-            health_status["components"]["local_tidb"] = "connected"
-        else:
-            health_status["components"]["local_tidb"] = "not_connected"
-    except:
-        health_status["components"]["local_tidb"] = "error"
-
-    health_status["message"] = "RAG Store API is running"
-    return health_status
+async def health_check():
+    """健康檢查端點"""
+    return {"status": "ok", "message": "RAG Store API is running"}
 
 @app.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):

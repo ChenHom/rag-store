@@ -26,9 +26,10 @@ server.log
 .backend.pid
 .frontend.pid
 
-# Binaries and archives
-ngrok
-ngrok.tgz
+# nginx 相關檔案
+.nginx.pid
+nginx.log
 
-# ngrok configuration (may contain auth tokens)
-ngrok.yml
+# 上傳檔案
+uploads/
+temp/
