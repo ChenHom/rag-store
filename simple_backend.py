@@ -48,6 +48,14 @@ def query_rag(request: QueryRequest):
         sources=[]
     )
 
+@app.post("/api/chat")
+def chat_rag(request: QueryRequest):
+    """簡化的聊天端點，功能同查詢"""
+    return QueryResponse(
+        answer=f"這是對查詢「{request.query}」的聊天回應。nginx 配置正常運作！",
+        sources=[]
+    )
+
 @app.post("/api/upload")
 def upload_file():
     """簡化的上傳端點"""
