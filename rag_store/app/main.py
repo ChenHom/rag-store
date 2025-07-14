@@ -696,6 +696,14 @@ async def query_rag(request: QueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
 
+@app.post("/api/chat", response_model=QueryResponse)
+async def chat_rag(request: QueryRequest):
+    """
+    聊天端點，功能與查詢端點相同，用於聊天介面
+    """
+    # 直接呼叫查詢功能，保持一致性
+    return await query_rag(request)
+
 # --- Classification and Tagging API Endpoints ---
 
 @app.get("/api/categories", response_model=List[CategoryResponse])
