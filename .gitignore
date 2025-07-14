@@ -33,3 +33,13 @@ nginx.log
 # 上傳檔案
 uploads/
 temp/
+
+.venv
+# Python specific ignores
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.db
+*.sqlite3
