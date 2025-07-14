@@ -27,9 +27,9 @@ def test_api():
         print(f"   Response: {response.json()}")
         
         # Test query endpoint
-        print("\n3. Testing /query endpoint:")
+        print("\n3. Testing /api/query endpoint:")
         query_data = {"query": "What is artificial intelligence?"}
-        response = requests.post(f"{base_url}/query", json=query_data, timeout=10)
+        response = requests.post(f"{base_url}/api/query", json=query_data, timeout=10)
         print(f"   Status: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
@@ -39,8 +39,8 @@ def test_api():
             print(f"   Error: {response.text}")
         
         # Test files endpoint
-        print("\n4. Testing /files endpoint:")
-        response = requests.get(f"{base_url}/files", timeout=5)
+        print("\n4. Testing /api/files endpoint:")
+        response = requests.get(f"{base_url}/api/files", timeout=5)
         print(f"   Status: {response.status_code}")
         print(f"   Response: {response.json()}")
         

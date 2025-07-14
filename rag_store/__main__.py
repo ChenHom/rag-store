@@ -20,7 +20,7 @@ def query(
     """
     typer.echo(f"❓ Querying: {question}")
     try:
-        response = requests.post(f"{API_BASE_URL}/query", json={"query": question})
+        response = requests.post(f"{API_BASE_URL}/api/query", json={"query": question})
         response.raise_for_status()
         
         data = response.json()
@@ -54,7 +54,7 @@ def ingest(
     try:
         with open(file_path, "rb") as f:
             files = {'file': (os.path.basename(file_path), f)}
-            response = requests.post(f"{API_BASE_URL}/upload", files=files)
+            response = requests.post(f"{API_BASE_URL}/api/upload", files=files)
             response.raise_for_status()
             
             data = response.json()

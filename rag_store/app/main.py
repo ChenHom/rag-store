@@ -288,7 +288,7 @@ async def health_check():
     """健康檢查端點"""
     return {"status": "ok", "message": "RAG Store API is running"}
 
-@app.post("/upload", response_model=UploadResponse)
+@app.post("/api/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
     """
     Upload a file for processing and storage.
@@ -342,7 +342,7 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
-@app.post("/query", response_model=QueryResponse)
+@app.post("/api/query", response_model=QueryResponse)
 async def query_rag(request: QueryRequest):
     """
     Process a query using RAG (Retrieval-Augmented Generation).
@@ -379,7 +379,7 @@ async def query_rag(request: QueryRequest):
 
 # --- Additional utility endpoints ---
 
-@app.get("/files")
+@app.get("/api/files")
 async def list_files():
     """List uploaded files."""
     try:

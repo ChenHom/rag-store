@@ -40,7 +40,7 @@ def test_upload_file(file_path: str):
 
         with open(file_path, 'rb') as f:
             files = {'file': f}
-            response = requests.post(f"{API_BASE_URL}/upload", files=files)
+            response = requests.post(f"{API_BASE_URL}/api/upload", files=files)
 
         if response.status_code == 200:
             upload_data = response.json()
@@ -61,7 +61,7 @@ def test_query(query: str):
     print(f"🤖 測試 RAG 查詢: {query}")
     try:
         payload = {"query": query}
-        response = requests.post(f"{API_BASE_URL}/query", json=payload)
+        response = requests.post(f"{API_BASE_URL}/api/query", json=payload)
 
         if response.status_code == 200:
             query_data = response.json()
@@ -83,7 +83,7 @@ def test_list_files():
     """測試列出文件"""
     print("📁 測試列出文件...")
     try:
-        response = requests.get(f"{API_BASE_URL}/files")
+        response = requests.get(f"{API_BASE_URL}/api/files")
         if response.status_code == 200:
             files_data = response.json()
             files = files_data.get('files', [])
