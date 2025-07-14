@@ -93,6 +93,19 @@ stop_services() {
         fi
     fi
 
+    # 停止可能佔用端口 3000 和 3001 的進程
+    local port3000_pid=$(lsof -ti :3000 2>/dev/null | head -1)
+    if [ -n "$port3000_pid" ]; then
+        log_info "停止佔用端口 3000 的進程 (PID: $port3000_pid)"
+        kill $port3000_pid 2>/dev/null || true
+    fi
+
+    local port3001_pid=$(lsof -ti :3001 2>/dev/null | head -1)
+    if [ -n "$port3001_pid" ]; then
+        log_info "停止佔用端口 3001 的進程 (PID: $port3001_pid)"
+        kill $port3001_pid 2>/dev/null || true
+    fi
+
     # 停止 nginx (如果由此腳本管理)
     if [ -f ".nginx.pid" ]; then
         local nginx_pid=$(cat .nginx.pid)
@@ -105,6 +118,9 @@ stop_services() {
 
     # 也嘗試停止任何 nginx 進程
     pkill -f "nginx: master process" 2>/dev/null || true
+
+    # 等待進程完全終止
+    sleep 2
 
     log_success "服務停止完成"
 }
@@ -161,8 +177,8 @@ start_frontend() {
     cd frontend
     npm run build
 
-    # 啟動 Next.js 生產模式
-    nohup npm run start > ../frontend.log 2>&1 &
+    # 啟動 Next.js 生產模式在端口 3001
+    nohup npm run start -- --port 3001 > ../frontend.log 2>&1 &
     echo $! > ../.frontend.pid
     cd ..
 

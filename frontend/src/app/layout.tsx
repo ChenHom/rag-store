@@ -27,10 +27,19 @@ function NavBar() {
         </Link>
         <div className="space-x-4">
           <Link href="/chat" className="hover:text-gray-300">
-            Chat
+            💬 聊天
+          </Link>
+          <Link href="/search" className="hover:text-gray-300">
+            🔍 進階搜尋
           </Link>
           <Link href="/upload" className="hover:text-gray-300">
-            Upload
+            📤 上傳
+          </Link>
+          <Link href="/classification" className="hover:text-gray-300">
+            📁 分類管理
+          </Link>
+          <Link href="/timeseries" className="hover:text-gray-300">
+            📈 時間序列
           </Link>
         </div>
       </div>

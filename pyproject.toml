@@ -23,6 +23,8 @@ typer = "^0.16.0"
 fastapi = {version = "^0.116.0", extras = ["all"]}
 langchain-community = "^0.2.0"
 uvicorn = "^0.30.0"
+pandas = "^2.0.0"
+numpy = "^1.26.0"
 
 
 [build-system]
