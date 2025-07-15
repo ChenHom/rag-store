@@ -9,7 +9,6 @@ import asyncio
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
-import openai
 from openai import OpenAI
 import mysql.connector
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -18,11 +17,13 @@ from datetime import date, datetime, timedelta
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client
+# --- OpenAI Configuration ---
 openai_client = None
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if OPENAI_API_KEY:
     openai_client = OpenAI(api_key=OPENAI_API_KEY)
+else:
+    print("Warning: OPENAI_API_KEY not found in environment variables")
 
 # --- Request/Response Models ---
 class QueryRequest(BaseModel):
@@ -136,12 +137,6 @@ app.add_middleware(
 # --- Configuration ---
 UPLOAD_DIR = Path("raw")
 UPLOAD_DIR.mkdir(exist_ok=True)
-
-# OpenAI Configuration
-openai_client = None
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if OPENAI_API_KEY:
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 # TiDB Cloud Configuration
 TIDB_HOST = os.getenv("TIDB_HOST")
@@ -292,6 +287,11 @@ async def multi_dimensional_search(
 
         cursor = conn.cursor(dictionary=True)
         
+        # 檢查 embeddings 表是否有 document_id 欄位
+        cursor.execute("DESCRIBE embeddings")
+        columns = [col[0] for col in cursor.fetchall()]
+        has_document_id = 'document_id' in columns
+        
         # 建構基本查詢
         if search_mode == "semantic":
             # 純語義搜尋模式
@@ -299,22 +299,8 @@ async def multi_dimensional_search(
             
         elif search_mode == "filter":
             # 純過濾模式（不使用向量搜尋）
-            base_sql = """
-            SELECT e.doc_id, e.chunk, 0.0 as distance,
-                   d.filename, c.name as category, d.document_date, 
-                   d.extracted_amount, fm.name as family_member
-            FROM embeddings e
-            JOIN documents d ON e.document_id = d.id
-            LEFT JOIN categories c ON d.category_id = c.id
-            LEFT JOIN family_members fm ON d.family_member_id = fm.id
-            """
-            
-        else:  # hybrid mode
-            # 混合模式：結合語義搜尋和過濾條件
-            query_embedding = await get_embedding(query_text)
-            if not query_embedding:
-                # 如果無法生成向量，回退到純過濾模式
-                search_mode = "filter"
+            if has_document_id:
+                # 使用 document_id 連接（新版 schema）
                 base_sql = """
                 SELECT e.doc_id, e.chunk, 0.0 as distance,
                        d.filename, c.name as category, d.document_date, 
@@ -325,19 +311,54 @@ async def multi_dimensional_search(
                 LEFT JOIN family_members fm ON d.family_member_id = fm.id
                 """
             else:
-                embedding_json = "[" + ",".join(map(str, query_embedding)) + "]"
+                # 使用 doc_id 連接（基本 schema）
                 base_sql = """
-                SELECT e.doc_id, e.chunk,
-                       VEC_COSINE_DISTANCE(CAST(e.vec AS VECTOR(1536)), CAST(%s AS VECTOR(1536))) AS distance,
-                       d.filename, c.name as category, d.document_date, 
-                       d.extracted_amount, fm.name as family_member
+                SELECT e.doc_id, e.chunk, 0.0 as distance
                 FROM embeddings e
-                JOIN documents d ON e.document_id = d.id
-                LEFT JOIN categories c ON d.category_id = c.id
-                LEFT JOIN family_members fm ON d.family_member_id = fm.id
                 """
+            
+        else:  # hybrid mode
+            # 混合模式：結合語義搜尋和過濾條件
+            query_embedding = await get_embedding(query_text)
+            if not query_embedding:
+                # 如果無法生成向量，回退到純過濾模式
+                search_mode = "filter"
+                if has_document_id:
+                    base_sql = """
+                    SELECT e.doc_id, e.chunk, 0.0 as distance,
+                           d.filename, c.name as category, d.document_date, 
+                           d.extracted_amount, fm.name as family_member
+                    FROM embeddings e
+                    JOIN documents d ON e.document_id = d.id
+                    LEFT JOIN categories c ON d.category_id = c.id
+                    LEFT JOIN family_members fm ON d.family_member_id = fm.id
+                    """
+                else:
+                    base_sql = """
+                    SELECT e.doc_id, e.chunk, 0.0 as distance
+                    FROM embeddings e
+                    """
+            else:
+                embedding_json = "[" + ",".join(map(str, query_embedding)) + "]"
+                if has_document_id:
+                    base_sql = """
+                    SELECT e.doc_id, e.chunk,
+                           VEC_COSINE_DISTANCE(CAST(e.vec AS VECTOR(1536)), CAST(%s AS VECTOR(1536))) AS distance,
+                           d.filename, c.name as category, d.document_date, 
+                           d.extracted_amount, fm.name as family_member
+                    FROM embeddings e
+                    JOIN documents d ON e.document_id = d.id
+                    LEFT JOIN categories c ON d.category_id = c.id
+                    LEFT JOIN family_members fm ON d.family_member_id = fm.id
+                    """
+                else:
+                    base_sql = """
+                    SELECT e.doc_id, e.chunk,
+                           VEC_COSINE_DISTANCE(CAST(e.vec AS VECTOR(1536)), CAST(%s AS VECTOR(1536))) AS distance
+                    FROM embeddings e
+                    """
         
-        # 建構過濾條件
+        # 建構過濾條件（只有在有 document_id 時才能使用）
         conditions = []
         params = []
         
@@ -345,41 +366,43 @@ async def multi_dimensional_search(
         if search_mode == "hybrid" and query_embedding:
             params.append(embedding_json)
         
-        # 添加標籤過濾
-        if tags:
-            tag_join = """
-            JOIN document_tags dt ON d.id = dt.document_id
-            JOIN tags t ON dt.tag_id = t.id
-            """
-            base_sql = base_sql.replace("FROM embeddings e", f"FROM embeddings e {tag_join}")
-            tag_placeholders = ','.join(['%s'] * len(tags))
-            conditions.append(f"t.name IN ({tag_placeholders})")
-            params.extend(tags)
-        
-        # 添加其他過濾條件
-        if category:
-            conditions.append("c.name = %s")
-            params.append(category)
-        
-        if family_member:
-            conditions.append("fm.name = %s")
-            params.append(family_member)
-        
-        if date_from:
-            conditions.append("d.document_date >= %s")
-            params.append(date_from)
-        
-        if date_to:
-            conditions.append("d.document_date <= %s")
-            params.append(date_to)
-        
-        if amount_min is not None:
-            conditions.append("d.extracted_amount >= %s")
-            params.append(amount_min)
-        
-        if amount_max is not None:
-            conditions.append("d.extracted_amount <= %s")
-            params.append(amount_max)
+        # 只有在有 document_id 且有相關表格連接時才能使用以下過濾條件
+        if has_document_id:
+            # 添加標籤過濾
+            if tags:
+                tag_join = """
+                JOIN document_tags dt ON d.id = dt.document_id
+                JOIN tags t ON dt.tag_id = t.id
+                """
+                base_sql = base_sql.replace("FROM embeddings e", f"FROM embeddings e {tag_join}")
+                tag_placeholders = ','.join(['%s'] * len(tags))
+                conditions.append(f"t.name IN ({tag_placeholders})")
+                params.extend(tags)
+            
+            # 添加其他過濾條件
+            if category:
+                conditions.append("c.name = %s")
+                params.append(category)
+            
+            if family_member:
+                conditions.append("fm.name = %s")
+                params.append(family_member)
+            
+            if date_from:
+                conditions.append("d.document_date >= %s")
+                params.append(date_from)
+            
+            if date_to:
+                conditions.append("d.document_date <= %s")
+                params.append(date_to)
+            
+            if amount_min is not None:
+                conditions.append("d.extracted_amount >= %s")
+                params.append(amount_min)
+            
+            if amount_max is not None:
+                conditions.append("d.extracted_amount <= %s")
+                params.append(amount_max)
         
         # 組合條件
         if conditions:
@@ -388,8 +411,10 @@ async def multi_dimensional_search(
         # 排序和限制
         if search_mode == "hybrid" and query_embedding:
             base_sql += " ORDER BY distance ASC"
-        else:
+        elif has_document_id:
             base_sql += " ORDER BY d.created_at DESC"
+        else:
+            base_sql += " ORDER BY e.id DESC"
         
         base_sql += " LIMIT %s"
         params.append(limit)
